@@ -36,7 +36,7 @@ input_timeout=2
 # Otherwise, set input_key to the name of the pressed key and set the modifier
 # flags (input_ctrl, input_alt, and input_shift) appropriately. Return zero if
 # input was read successfully.
-input_get() {
+bashed_input_get() {
 	input_char=''
 	input_key=''
 	input_ctrl=0
@@ -50,7 +50,7 @@ input_get() {
 	case "${char}" in
 		$'\e')
 			# Process escape sequences separately.
-			read_esc
+			bashed_read_esc
 			return
 			;;
 		$'\b')
@@ -95,11 +95,11 @@ input_get() {
 }
 
 # Precondition: the preceding input is 'ESC'.
-read_esc() {
+bashed_read_esc() {
 	local char
 	if $read_char_nonblocking char; then
 		[ "${char}" == '[' ] || return $input_unknown
-		read_csi
+		bashed_read_csi
 		return
 	else
 		# If no input immediately follows the Escape character, assume
@@ -111,13 +111,13 @@ read_esc() {
 }
 
 # Precondition: the preceding input is the control sequence introducer 'ESC['.
-read_csi() {
+bashed_read_csi() {
 	local char
 	$read_char_nonblocking char || return $input_timeout
 
 	if [ "${char}" == '1' ] && [ "${term}" == 'xterm' ]; then
-		read_char_assert ';' || return
-		read_modifiers || return
+		bashed_read_char_assert ';' || return
+		bashed_read_modifiers || return
 
 		# Get the first character after reading the modifiers.
 		$read_char_nonblocking char || return $input_timeout
@@ -184,8 +184,8 @@ read_csi() {
 	$read_char_nonblocking char || return $input_timeout
 	case "${char}" in
 		';')
-			read_modifiers || return
-			read_char_assert '~' || return
+			bashed_read_modifiers || return
+			bashed_read_char_assert '~' || return
 			;;
 		'~')
 			;;
@@ -196,16 +196,16 @@ read_csi() {
 	input_key="${input_key_temp}"
 }
 
-# read_char_assert <char>
+# bashed_read_char_assert <char>
 # Read a character from stdin, returning zero if it is the specified character.
-read_char_assert() {
+bashed_read_char_assert() {
 	local char
 	$read_char_nonblocking char || return $input_timeout
 	[ "${char}" == "${1}" ] || return $input_unknown
 }
 
 # Precondition: the next character from stdin is expected to be a modifier mask.
-read_modifiers() {
+bashed_read_modifiers() {
 	local mask
 	$read_char_nonblocking mask || return $input_timeout
 	[[ $mask =~ [1-8] ]] || return $input_unknown
@@ -230,9 +230,9 @@ read_modifiers() {
 }
 
 # Show the keyboard input in the console.
-input_test() {
+bashed_input_test() {
 	while :; do
-		input_get || echo "Non-zero return value: $?"
+		bashed_input_get || echo "Non-zero return value: $?"
 		printf "char:'%s'\tkey:'%s'\tctrl:%d\talt:%d\tshift:%d\n" \
 				"${input_char}" "${input_key}" "${input_ctrl}" \
 				"${input_alt}" "${input_shift}"
@@ -242,13 +242,13 @@ input_test() {
 ######## Terminal Settings ########
 
 # Set terminal settings when using the editor.
-terminal_editing() {
+bashed_terminal_editing() {
 	# Do not print the user's keystrokes.
 	stty -echo
 }
 
 # Set terminal settings when leaving the editor.
-terminal_normal() {
+bashed_terminal_normal() {
 	# Turn formatting off.
 	tput sgr0
 
@@ -271,7 +271,7 @@ terminal_normal() {
 # Convert tab characters (\t) to appropriate numbers of spaces using the
 # tab_stop variable. The expanded string is stored in the variable tab_expand_v.
 tab_expand_regex=$'^([^\t]*)\t(.*)$'
-tab_expand() {
+bashed_tab_expand() {
 	tab_expand_v="${lines[$1]}"
 	while [[ $tab_expand_v =~ $tab_expand_regex ]]; do
 		# The part of the line before the tab character.
@@ -290,7 +290,7 @@ tab_expand() {
 # Given a position (row and column) in the unexpanded text, compute the
 # corresponding column position after tab expansion is performed. If the
 # position is not specified, it defaults to the cursor position.
-tab_expand_col() {
+bashed_tab_expand_col() {
 	local r=${1:-$cr}
 	local c_target=${2:-$cc}
 	local line="${lines[$r]}"
@@ -307,12 +307,12 @@ tab_expand_col() {
 	done
 }
 
-# tab_unexpand_col <row> <expanded_col>
+# bashed_tab_unexpand_col <row> <expanded_col>
 # Given a position (row and column) in the tab-expanded text, compute the
 # corresponding column position before tab expansion. If the provided position
 # is in the middle of an expanded tab, the column position left of that tab
 # character is returned.
-tab_unexpand_col() {
+bashed_tab_unexpand_col() {
 	local r=$1
 	local exp_c_target=$2
 	local line="${lines[$r]}"
@@ -350,14 +350,14 @@ tab_unexpand_col() {
 
 ######## Cursor and Selection ########
 
-# cursor_move <row> <col> [remember_prev_tab_expanded_col]
+# bashed_cursor_move <row> <col> [remember_prev_tab_expanded_col]
 # Move the cursor to the specified row and column of the document. If selection
 # mode is not active, the selection anchor will be moved along with the cursor.
 # If a third parameter is provided, prev_tab_expanded_col will not be cleared.
-cursor_move() {
+bashed_cursor_move() {
 	if (( mode_selecting )); then
 		# Redraw the part of the screen that the cursor moved over.
-		draw_request $(( $1 < cr ? $1 : cr )) $(( $1 > cr ? $1 : cr ))
+		bashed_draw_request $(( $1 < cr ? $1 : cr )) $(( $1 > cr ? $1 : cr ))
 	fi
 
 	cr=$1
@@ -368,39 +368,39 @@ cursor_move() {
 		sc=$cc
 	fi
 
-	selection_update
+	bashed_selection_update
 
 	[ "${3}" ] || prev_tab_expanded_col=0
 }
 
 # Beginning of line.
-cursor_bol() {
-	cursor_move $cr 0
+bashed_cursor_bol() {
+	bashed_cursor_move $cr 0
 }
 
 # End of line.
-cursor_eol() {
-	cursor_move $cr ${#lines[$cr]}
+bashed_cursor_eol() {
+	bashed_cursor_move $cr ${#lines[$cr]}
 }
 
 # Beginning of document.
-cursor_beginning() {
-	cursor_move 0 0
+bashed_cursor_beginning() {
+	bashed_cursor_move 0 0
 }
 
 # End of document.
-cursor_end() {
+bashed_cursor_end() {
 	# Index of the last line.
 	local new_r=$(( ${#lines[@]} - 1 ))
 
-	cursor_move $new_r ${#lines[$new_r]}
+	bashed_cursor_move $new_r ${#lines[$new_r]}
 }
 
-# cursor_up [lines]
+# bashed_cursor_up [lines]
 # Move the cursor upward by the specified number of lines (default 1).
-cursor_up() {
+bashed_cursor_up() {
 	if (( !mode_selecting && selection_exists )); then
-		selection_deselect 'start'
+		bashed_selection_deselect 'start'
 		return
 	fi
 
@@ -416,25 +416,25 @@ cursor_up() {
 		# line).
 		if (( ! prev_tab_expanded_col )); then
 			# Use the current cursor position.
-			tab_expand_col
+			bashed_tab_expand_col
 			prev_tab_expanded_col=$tab_expand_col_v
 		fi
 
 		# Compute the new cursor position's unexpanded column.
-		tab_unexpand_col $new_r $prev_tab_expanded_col
+		bashed_tab_unexpand_col $new_r $prev_tab_expanded_col
 
-		cursor_move $new_r $tab_unexpand_col_v 'remember'
+		bashed_cursor_move $new_r $tab_unexpand_col_v 'remember'
 	elif (( up_down_jump )); then
 		# On the first line: move to its beginning.
-		cursor_beginning
+		bashed_cursor_beginning
 	fi
 }
 
-# cursor_down [lines]
+# bashed_cursor_down [lines]
 # Move the cursor downward by the specified number of lines (default 1).
-cursor_down() {
+bashed_cursor_down() {
 	if (( !mode_selecting && selection_exists )); then
-		selection_deselect 'end'
+		bashed_selection_deselect 'end'
 		return
 	fi
 
@@ -444,73 +444,73 @@ cursor_down() {
 		local new_r=$(( cr + ${1:-1} ))
 		new_r=$(( new_r >= ${#lines[@]} ? ${#lines[@]} - 1 : new_r ))
 
-		# See comments in cursor_up.
+		# See comments in bashed_cursor_up.
 
 		if (( ! prev_tab_expanded_col )); then
-			tab_expand_col
+			bashed_tab_expand_col
 			prev_tab_expanded_col=$tab_expand_col_v
 		fi
 
-		tab_unexpand_col $new_r $prev_tab_expanded_col
+		bashed_tab_unexpand_col $new_r $prev_tab_expanded_col
 
-		cursor_move $new_r $tab_unexpand_col_v 'remember'
+		bashed_cursor_move $new_r $tab_unexpand_col_v 'remember'
 	elif (( up_down_jump )); then
 		# On the last line: move to its end.
-		cursor_end
+		bashed_cursor_end
 	fi
 }
 
-cursor_left() {
+bashed_cursor_left() {
 	if (( !mode_selecting && selection_exists )); then
-		selection_deselect 'start'
+		bashed_selection_deselect 'start'
 		return
 	fi
 
 	if (( mode_move_by_words )); then
-		cursor_left_word
+		bashed_cursor_left_word
 	else
-		cursor_left_char
+		bashed_cursor_left_char
 	fi
 }
 
-cursor_right() {
+bashed_cursor_right() {
 	if (( !mode_selecting && selection_exists )); then
-		selection_deselect 'end'
+		bashed_selection_deselect 'end'
 		return
 	fi
 
 	if (( mode_move_by_words )); then
-		cursor_right_word
+		bashed_cursor_right_word
 	else
-		cursor_right_char
+		bashed_cursor_right_char
 	fi
 }
 
-cursor_left_char() {
+bashed_cursor_left_char() {
 	if (( cc > 0 )); then
 		# Move to the left.
-		cursor_move $cr $(( cc - 1 ))
+		bashed_cursor_move $cr $(( cc - 1 ))
 	elif (( left_right_wrap && cr > 0 )); then
 		# Move to the end of the previous line.
 		local nr=$(( cr - 1 ))
-		cursor_move "${nr}" "${#lines[$nr]}"
+		bashed_cursor_move "${nr}" "${#lines[$nr]}"
 	fi
 }
 
-cursor_right_char() {
+bashed_cursor_right_char() {
 	if (( cc < ${#lines[$cr]} )); then
 		# Move to the right.
-		cursor_move $cr $(( cc + 1 ))
+		bashed_cursor_move $cr $(( cc + 1 ))
 	elif (( left_right_wrap && cr + 1 < ${#lines[@]} )); then
 		# Move to the beginning of the next line.
-		cursor_move $(( cr + 1 )) 0
+		bashed_cursor_move $(( cr + 1 )) 0
 	fi
 }
 
-cursor_left_word() {
-	# Defer to cursor_left_char behaviour for beginning of line.
+bashed_cursor_left_word() {
+	# Defer to bashed_cursor_left_char behaviour for beginning of line.
 	if (( cc == 0 )); then
-		cursor_left_char
+		bashed_cursor_left_char
 		return
 	fi
 
@@ -521,13 +521,13 @@ cursor_left_word() {
 			[[ ${line:$(( nc - 1 )):1} =~ $word_char ]]; do
 		(( nc-- ))
 	done
-	cursor_move $cr $nc
+	bashed_cursor_move $cr $nc
 }
 
-cursor_right_word() {
-	# Defer to cursor_right behaviour for end of line.
+bashed_cursor_right_word() {
+	# Defer to bashed_cursor_right behaviour for end of line.
 	if (( cc == ${#lines[$cr]} )); then
-		cursor_right_char
+		bashed_cursor_right_char
 		return
 	fi
 
@@ -539,12 +539,12 @@ cursor_right_word() {
 			[[ ${line:$nc:1} =~ $word_char ]]; do
 		(( nc++ ))
 	done
-	cursor_move $cr $nc
+	bashed_cursor_move $cr $nc
 }
 
 # Recompute whether anything is selected, as well as the positions of the
 # start and end of the selection.
-selection_update() {
+bashed_selection_update() {
 	selection_exists=$(( cr != sr || cc != sc ))
 
 	if (( cr < sr || (cr == sr && cc < sc) )); then
@@ -562,13 +562,13 @@ selection_update() {
 	fi
 }
 
-# selection_deselect [mode]
+# bashed_selection_deselect [mode]
 # Deselect the active selection. If mode is 'start' or 'end', the cursor is
 # moved to the start or end of the selection, respectively. If mode is not
 # provided, the cursor remains in its current position.
-selection_deselect() {
+bashed_selection_deselect() {
 	# Redraw everything that will be deselected.
-	draw_request $ar $br
+	bashed_draw_request $ar $br
 
 	case "${1}" in
 		start)
@@ -584,11 +584,11 @@ selection_deselect() {
 	sr=$cr
 	sc=$cc
 
-	selection_update
+	bashed_selection_update
 }
 
 # Get the currently selected text. Returns nonzero if nothing is selected.
-selection_get() {
+bashed_selection_get() {
 	(( selection_exists )) || return 1
 
 	# Special case for a selection on a single line.
@@ -613,11 +613,11 @@ selection_get() {
 }
 
 # Delete the currently selected text. Returns nonzero if nothing is selected.
-selection_delete() {
+bashed_selection_delete() {
 	(( selection_exists )) || return 1
 
 	# Redraw the single line that is changed but not completely deleted.
-	draw_request $ar $ar $(( br - ar ))
+	bashed_draw_request $ar $ar $(( br - ar ))
 
 	if (( ar == br )); then
 		# The selection starts and ends on the same line.
@@ -632,38 +632,38 @@ selection_delete() {
 				"${lines[@]:$(( br + 1 ))}" )
 	fi
 
-	selection_deselect 'start'
+	bashed_selection_deselect 'start'
 
 	file_modified=1
 }
 
 # Initialize the cursor and selection variables.
-cursor_selection_init() {
-	cursor_beginning
+bashed_cursor_selection_init() {
+	bashed_cursor_beginning
 }
 
 ######## Insertion ########
 
-# insert_text <text>
+# bashed_insert_text <text>
 # Insert text which does not contain newlines.
-insert_text() {
+bashed_insert_text() {
 	# Replace any active selection.
-	selection_delete
+	bashed_selection_delete
 
 	# Insert the text into the current line, after the cursor.
 	lines[$cr]="${lines[$cr]:0:$cc}${1}${lines[$cr]:$cc}"
 	file_modified=1
 
-	draw_request $cr $cr 0
+	bashed_draw_request $cr $cr 0
 
 	# Move the cursor to the end of the inserted text.
-	cursor_move $cr $(( cc + ${#1} ))
+	bashed_cursor_move $cr $(( cc + ${#1} ))
 }
 
 # Insert a newline at the current cursor position.
-insert_newline() {
+bashed_insert_newline() {
 	# Replace any active selection.
-	selection_delete
+	bashed_selection_delete
 
 	lines=( "${lines[@]:0:$cr}" \
 			"${lines[$cr]:0:$cc}" \
@@ -671,16 +671,16 @@ insert_newline() {
 			"${lines[@]:$(( cr + 1 ))}" )
 	file_modified=1
 
-	draw_request $cr $(( cr + 1 )) 1
+	bashed_draw_request $cr $(( cr + 1 )) 1
 
-	cursor_move $(( cr + 1 )) 0
+	bashed_cursor_move $(( cr + 1 )) 0
 }
 
-# insert_lines <text>
+# bashed_insert_lines <text>
 # Insert text which may contain newlines.
-insert_lines() {
+bashed_insert_lines() {
 	# Replace any active selection.
-	selection_delete
+	bashed_selection_delete
 
 	# Separate the lines of the input, keeping the newlines at the end of
 	# each line.
@@ -700,10 +700,10 @@ insert_lines() {
 			has_newline=0
 		fi
 		
-		insert_text "${line}"
+		bashed_insert_text "${line}"
 
 		if (( has_newline )); then
-			insert_newline
+			bashed_insert_newline
 		fi
 	done
 }
@@ -711,7 +711,7 @@ insert_lines() {
 ######## Clipboard ########
 
 # Return zero if xclip can be used to provide clipboard functionality.
-clipboard_xclip_available() {
+bashed_clipboard_xclip_available() {
 	# Check if the X server is running.
 	[ "${DISPLAY}" ] || return 1
 
@@ -721,28 +721,28 @@ clipboard_xclip_available() {
 
 # Copy the selected text to the clipboard. Return nonzero if nothing is
 # selected.
-clipboard_copy() {
-	selection_get || return 1
+bashed_clipboard_copy() {
+	bashed_selection_get || return 1
 	if (( clipboard_use_xclip )); then
 		echo -n "${selection_get_v}" | xclip -in
 	else
 		clipboard_text="${selection_get_v}"
 	fi
-	draw_message "Copied ${#selection_get_v} characters to clipboard."
+	bashed_draw_message "Copied ${#selection_get_v} characters to clipboard."
 }
 
 # Cut the selected text to the clipboard. Return nonzero if nothing is
 # selected.
-clipboard_cut() {
-	clipboard_copy || return 1
-	selection_delete
+bashed_clipboard_cut() {
+	bashed_clipboard_copy || return 1
+	bashed_selection_delete
 
-	# This message overrides the one given by clipboard_copy.
-	draw_message "Cut ${#selection_get_v} characters to clipboard."
+	# This message overrides the one given by bashed_clipboard_copy.
+	bashed_draw_message "Cut ${#selection_get_v} characters to clipboard."
 }
 
 # Paste the selected text from the clipboard.
-clipboard_paste() {
+bashed_clipboard_paste() {
 	if (( clipboard_use_xclip )); then
 		# Get the clipboard contents, with an extra character appended
 		# so that any trailing newlines are not stripped by the command
@@ -755,16 +755,16 @@ clipboard_paste() {
 	fi
 
 	if [ "${clipboard_text}" ]; then
-		insert_lines "${clipboard_text}"
-		draw_message "Pasted ${#clipboard_text} characters."
+		bashed_insert_lines "${clipboard_text}"
+		bashed_draw_message "Pasted ${#clipboard_text} characters."
 	else
-		draw_message 'Nothing to paste.'
+		bashed_draw_message 'Nothing to paste.'
 	fi
 }
 
 # Initialize the clipboard.
-clipboard_init() {	
-	if clipboard_xclip_available; then
+bashed_clipboard_init() {	
+	if bashed_clipboard_xclip_available; then
 		clipboard_use_xclip=1
 	else
 		clipboard_use_xclip=0
@@ -774,7 +774,7 @@ clipboard_init() {
 ######## Viewport ########
 
 # Update the viewport dimensions using tput.
-viewport_update_dimensions() {
+bashed_viewport_update_dimensions() {
 	vp_height=$(( $(tput lines) - 1 ))
 	vp_width=$(tput cols)
 
@@ -782,20 +782,20 @@ viewport_update_dimensions() {
 	vp_max_c=$(( vp_min_c + vp_width - 1 ))
 }
 
-# viewport_scroll <lines>
+# bashed_viewport_scroll <lines>
 # Scroll the viewport downward by the specified number of lines. Negative values
 # correspond to scrolling upward. This does not affect what is displayed in the
 # terminal.
-viewport_scroll() {
+bashed_viewport_scroll() {
 	(( vp_min_r += $1 ))
 	(( vp_max_r += $1 ))
 }
 
-# viewport_pan <columns>
+# bashed_viewport_pan <columns>
 # Pan the viewport to the right by the specified number of columns. Negative
 # values correspond to panning leftward. This does not affect what is displayed
 # in the terminal.
-viewport_pan() {
+bashed_viewport_pan() {
 	(( vp_min_c += $1 ))
 	(( vp_max_c += $1 ))
 }
@@ -803,7 +803,7 @@ viewport_pan() {
 # Compute the number of lines that the viewport must be scrolled downward to
 # keep the cursor visible. Negative values correspond to scrolling upward.
 # Returns zero if scrolling is necessary.
-viewport_required_scroll() {
+bashed_viewport_required_scroll() {
 	if (( cr < vp_min_r )); then
 		viewport_required_scroll_v=$(( cr - vp_min_r ))
 		return 0
@@ -819,8 +819,8 @@ viewport_required_scroll() {
 # Compute the number of columns that the viewport must be panned to the right
 # to keep the cursor visible. Negative values correspond to panning leftward.
 # Returns zero if panning is necessary.
-viewport_required_pan() {
-	tab_expand_col
+bashed_viewport_required_pan() {
+	bashed_tab_expand_col
 	if (( tab_expand_col_v < vp_min_c )); then
 		viewport_required_pan_v=$(( tab_expand_col_v - vp_min_c ))
 		return 0
@@ -834,18 +834,18 @@ viewport_required_pan() {
 }
 
 # Initialize viewport variables.
-viewport_init() {
+bashed_viewport_init() {
 	vp_min_r=0
 	vp_min_c=0
-	viewport_update_dimensions
+	bashed_viewport_update_dimensions
 }
 
 ######## Rendering ########
 
-# draw_request <first_line> <last_line> [delta]
+# bashed_draw_request <first_line> <last_line> [delta]
 # Request a range of lines to be redrawn. If any lines were inserted or removed,
 # the change in the number of lines must be specified.
-draw_request() {
+bashed_draw_request() {
 	if (( draw_first == -1 || draw_first > $1 )); then
 		draw_first=$1
 	fi
@@ -857,16 +857,16 @@ draw_request() {
 	draw_delta+=${3:-0}
 }
 
-# draw_line_text <line>
+# bashed_draw_line_text <line>
 # Tab expand the specified line and clip it to fit in the viewport.
-draw_line_text() {
+bashed_draw_line_text() {
 	# If the line is out of range, use the empty string.
 	if (( $1 >= ${#lines[@]} )); then
 		draw_line_text_v=''
 		return
 	fi
 
-	tab_expand $1
+	bashed_tab_expand $1
 
 	# Clip the expanded line to fit in the viewport.
 	draw_line_text_v="${tab_expand_v:$vp_min_c:$vp_width}"
@@ -875,9 +875,9 @@ draw_line_text() {
 	(( ${#draw_line_text_v} < vp_width )) && draw_line_text_v+=' '
 }
 
-# draw_lines <from> <to>
+# bashed_draw_lines <from> <to>
 # Redraw the specified range of lines (inclusive).
-draw_lines() {
+bashed_draw_lines() {
 	# Do not draw lines that are outside the viewport.
 	local r_min=$(( $1 < vp_min_r ? vp_min_r : $1 ))
 	local r_max=$(( $2 > vp_max_r ? vp_max_r : $2 ))
@@ -890,7 +890,7 @@ draw_lines() {
 		# Clear the current line.
 		echo -n "${tput_el}"
 
-		draw_line_text $r
+		bashed_draw_line_text $r
 
 		if (( selection_exists && r >= ar && r <= br )); then
 			# Insert the end of selection formatting. (This is
@@ -899,7 +899,7 @@ draw_lines() {
 			# inserted characters.)
 			local end_col
 			if (( r == br )); then
-				tab_expand_col $br $bc
+				bashed_tab_expand_col $br $bc
 				end_col=$(( tab_expand_col_v - vp_min_c ))
 			else
 				end_col=${#draw_line_text_v}
@@ -910,7 +910,7 @@ ${selection_format_end}${draw_line_text_v:$end_col}"
 			# Insert the start of selection formatting.
 			local start_col
 			if (( r == ar )); then
-				tab_expand_col $ar $ac
+				bashed_tab_expand_col $ar $ac
 				start_col=$(( tab_expand_col_v - vp_min_c ))
 			else
 				start_col=0
@@ -928,11 +928,11 @@ ${selection_format_start}${draw_line_text_v:$start_col}"
 }
 
 # Draw the parts of the viewport which need to be redrawn.
-draw_viewport() {
+bashed_draw_viewport() {
 	# Calculate how much the viewport must be scrolled/panned to keep the
 	# cursor visible.
-	viewport_required_scroll
-	viewport_required_pan
+	bashed_viewport_required_scroll
+	bashed_viewport_required_pan
 
 	# Redraw everything if explicitly requested (e.g. on window resize).
 	# The entire viewport has to be redrawn when panning.
@@ -940,39 +940,39 @@ draw_viewport() {
 	# possible to handle this more intelligently, but it doesn't seem worth
 	# the effort.
 	if (( draw_all_flag || viewport_required_pan_v || draw_delta )); then
-		draw_viewport_all
+		bashed_draw_viewport_all
 		return
 	fi
 
 	# Scroll the lines in the viewport.
 	if (( viewport_required_scroll_v )); then
-		viewport_scroll $viewport_required_scroll_v
-		draw_scroll $viewport_required_scroll_v
+		bashed_viewport_scroll $viewport_required_scroll_v
+		bashed_draw_scroll $viewport_required_scroll_v
 
 		if (( viewport_required_scroll_v > 0 )); then
 			# Scrolled downward by N: draw the bottom N lines.
-			draw_lines $(( vp_max_r - viewport_required_scroll_v \
+			bashed_draw_lines $(( vp_max_r - viewport_required_scroll_v \
 					- 1 )) $vp_max_r
 		else
 			# Scrolled upward by N: draw the top N lines.
-			draw_lines $vp_min_r $(( vp_min_r \
+			bashed_draw_lines $vp_min_r $(( vp_min_r \
 					- viewport_required_scroll_v - 1 ))
 		fi
 	fi
 
 	# Draw any changed lines.
 	if (( draw_first != -1 )); then
-		draw_lines $draw_first $draw_last
+		bashed_draw_lines $draw_first $draw_last
 	fi
 
-	draw_request_clear
+	bashed_draw_request_clear
 }
 
-# draw_scroll <lines>
+# bashed_draw_scroll <lines>
 # Scroll the lines displayed on the screen upward by the specified amount.
 # (This corresponds to moving the viewport downward.) Negative amounts
 # correspond to scrolling the displayed lines downward.
-draw_scroll() {
+bashed_draw_scroll() {
 	if (( $1 > 0 )); then
 		# Go to the bottom left corner (precondition for ind).
 		tput cup $vp_height 0
@@ -992,7 +992,7 @@ draw_scroll() {
 }
 
 # Clear the draw request variables after drawing is complete.
-draw_request_clear() {
+bashed_draw_request_clear() {
 	draw_all_flag=0
 	draw_first=-1
 	draw_last=-1
@@ -1001,23 +1001,23 @@ draw_request_clear() {
 
 # Redraw the entire viewport, handling any required scrolling and panning.
 # Assumes that the required scroll and pan amounts have already been computed.
-draw_viewport_all() {
-	viewport_scroll $viewport_required_scroll_v
-	viewport_pan $viewport_required_pan_v
-	draw_lines $vp_min_r $vp_max_r
-	draw_request_clear
+bashed_draw_viewport_all() {
+	bashed_viewport_scroll $viewport_required_scroll_v
+	bashed_viewport_pan $viewport_required_pan_v
+	bashed_draw_lines $vp_min_r $vp_max_r
+	bashed_draw_request_clear
 }
 
-# draw_message <message>
+# bashed_draw_message <message>
 # Show a message on the status line.
-draw_message() {
+bashed_draw_message() {
 	draw_message_pending="${1}"
 }
 
 # Output a status line at the bottom of the screen.
-draw_status_line() {
+bashed_draw_status_line() {
 	# The line number, column number, and tab-expanded column number.
-	tab_expand_col
+	bashed_tab_expand_col
 	local cursor_pos="$(( cr + 1 )),$(( cc + 1 ))-\
 $(( tab_expand_col_v + 1 ))"
 
@@ -1063,26 +1063,26 @@ $(( tab_expand_col_v + 1 ))"
 }
 
 # Initialize the display.
-draw_init() {
+bashed_draw_init() {
 	# Initialize the draw request variables.
-	draw_request_clear
+	bashed_draw_request_clear
 
 	# Draw the display for the first time.
 	clear
 	draw_all_flag=1
-	draw
+	bashed_draw
 }
 
 # Redraw the display.
-draw() {
+bashed_draw() {
 	# Hide the cursor while drawing.
 	echo -n "${tput_civis}"
 
-	draw_viewport
-	draw_status_line
+	bashed_draw_viewport
+	bashed_draw_status_line
 
 	# Set the cursor position.
-	tab_expand_col
+	bashed_tab_expand_col
 	tput cup $(( cr - vp_min_r )) $(( tab_expand_col_v - vp_min_c ))
 
 	# Make the cursor visible again.
@@ -1092,7 +1092,7 @@ draw() {
 ######## Preferences ########
 
 # Initialize the preferences variables.
-preferences_init() {
+bashed_preferences_init() {
 	# Source the user's preferences file, if it exists.
 	[ -f "${HOME}/.bashedrc" ] && source "${HOME}/.bashedrc"
 
@@ -1120,14 +1120,14 @@ preferences_init() {
 
 ######## Event Handling ########
 
-# Handle new input from input_get.
-event_input() {
+# Handle new input from bashed_input_get.
+bashed_event_input() {
 	if [ "${input_char}" ]; then
 		mode_selecting=0
 		mode_move_by_words=0
 
 		# Type the character.
-		insert_text "${input_char}"
+		bashed_insert_text "${input_char}"
 		return
 	fi
 
@@ -1136,110 +1136,110 @@ event_input() {
 
 	case "${input_key}" in
 		Up)
-			cursor_up
+			bashed_cursor_up
 			;;
 		Down)
-			cursor_down
+			bashed_cursor_down
 			;;
 		PageUp)
-			cursor_up $(( vp_height - 1 ))
+			bashed_cursor_up $(( vp_height - 1 ))
 			;;
 		PageDown)
-			cursor_down $(( vp_height - 1 ))
+			bashed_cursor_down $(( vp_height - 1 ))
 			;;
 		Left)
-			cursor_left
+			bashed_cursor_left
 			;;
 		Right)
-			cursor_right
+			bashed_cursor_right
 			;;
 		Home)
 			if (( input_ctrl )); then
-				cursor_beginning
+				bashed_cursor_beginning
 			else
-				cursor_bol
+				bashed_cursor_bol
 			fi
 			;;
 		End)
 			if (( input_ctrl )); then
-				cursor_end
+				bashed_cursor_end
 			else
-				cursor_eol
+				bashed_cursor_eol
 			fi
 			;;
 		Tab)
-			insert_text $'\t'
+			bashed_insert_text $'\t'
 			;;
 		Enter)
-			(( selection_exists )) && selection_delete
-			insert_newline
+			(( selection_exists )) && bashed_selection_delete
+			bashed_insert_newline
 			;;
 		Backspace)
 			if (( selection_exists )); then
-				selection_delete
+				bashed_selection_delete
 			else
 				# Delete the character to the left of the
 				# cursor (which could be the newline ending the
 				# previous line, if left_right_wrap is true).
 				mode_selecting=1
-				cursor_left
-				selection_delete
+				bashed_cursor_left
+				bashed_selection_delete
 			fi
 			;;
 		Delete)
 			if (( selection_exists )); then
-				selection_delete
+				bashed_selection_delete
 			else
 				# Delete the character to the right of the
 				# cursor (which could be the newline ending this
 				# line, if left_right_wrap is true).
 				mode_selecting=1
-				cursor_right
-				selection_delete
+				bashed_cursor_right
+				bashed_selection_delete
 			fi
 			;;
 		A)
 			# Select all.
 			mode_selecting=0
-			cursor_beginning
+			bashed_cursor_beginning
 			mode_selecting=1
-			cursor_end
+			bashed_cursor_end
 			;;
 		D)
-			file_ask_save_if_necessary
+			bashed_file_ask_save_if_necessary
 			exit 0
 			;;
 		N)
-			file_new
+			bashed_file_new
 			;;
 		O)
-			file_open
+			bashed_file_open
 			;;
 		P)
-			file_save
+			bashed_file_save
 			;;
 		V)
-			clipboard_paste
+			bashed_clipboard_paste
 			;;
 		X)
-			clipboard_cut
+			bashed_clipboard_cut
 			;;
 		Y)
-			clipboard_copy
+			bashed_clipboard_copy
 			;;
 		_) # Sent by Ctrl+/.
-			help_show
+			bashed_help_show
 			;;
 	esac
 }
 
-event_exit() {
-	terminal_normal
+bashed_event_exit() {
+	bashed_terminal_normal
 	echo
 }
 
-event_tstp() {
-	terminal_normal
+bashed_event_tstp() {
+	bashed_terminal_normal
 
 	# Remove the signal handler temporarily.
 	trap - TSTP
@@ -1248,17 +1248,17 @@ event_tstp() {
 	kill -SIGTSTP $$
 
 	# Re-enable the signal handler on resume.
-	trap event_tstp TSTP
+	trap bashed_event_tstp TSTP
 }
 
-event_cont() {
-	terminal_editing
+bashed_event_cont() {
+	bashed_terminal_editing
 	draw_all_flag=1
-	draw
+	bashed_draw
 }
 
-event_winch() {
-	viewport_update_dimensions
+bashed_event_winch() {
+	bashed_viewport_update_dimensions
 	draw_all_flag=1
 	# The display is not updated immediately on resize, which may be because
 	# the signal handler is not called until after the next keystroke is
@@ -1266,69 +1266,69 @@ event_winch() {
 }
 
 # Register signal handlers.
-event_init() {
-	trap event_exit EXIT
-	trap event_tstp TSTP
-	trap event_cont CONT
-	trap event_winch WINCH
+bashed_event_init() {
+	trap bashed_event_exit EXIT
+	trap bashed_event_tstp TSTP
+	trap bashed_event_cont CONT
+	trap bashed_event_winch WINCH
 }
 
 ######## File Operations ########
 
-# file_init [path]
+# bashed_file_init [path]
 # Open the specified file (if provided), or create an empty buffer.
-file_init() {
+bashed_file_init() {
 	file_path="${1}"
 
 	if [ -e "${file_path}" ]; then
 		readarray -t lines <<< "$(<"${file_path}")"
-		draw_message "Opened file \"${file_path}\"".
+		bashed_draw_message "Opened file \"${file_path}\"".
 	else
 		lines=('')
 	fi
 
 	file_modified=0
 
-	cursor_selection_init
-	viewport_init
-	draw_init
+	bashed_cursor_selection_init
+	bashed_viewport_init
+	bashed_draw_init
 }
 
 # Save the current buffer.
-file_save() {
-	[ -z "${file_path}" ] && file_ask_filename 'save'
+bashed_file_save() {
+	[ -z "${file_path}" ] && bashed_file_ask_filename 'save'
 
 	printf '%s\n' "${lines[@]}" > "${file_path}"
 
-	draw_message "Saved file \"${file_path}\"."
+	bashed_draw_message "Saved file \"${file_path}\"."
 
 	file_modified=0
 }
 
 # Create a new buffer.
-file_new() {
-	file_ask_save_if_necessary
-	file_init
+bashed_file_new() {
+	bashed_file_ask_save_if_necessary
+	bashed_file_init
 }
 
 # Open an existing file.
-file_open() {
-	file_ask_save_if_necessary
-	file_ask_filename 'open'
-	file_init "${file_path}"
+bashed_file_open() {
+	bashed_file_ask_save_if_necessary
+	bashed_file_ask_filename 'open'
+	bashed_file_init "${file_path}"
 }
 
 # If the file has been modified, ask if the user wants to save it.
-file_ask_save_if_necessary() {
+bashed_file_ask_save_if_necessary() {
 	(( file_modified )) || return
 
-	terminal_normal
+	bashed_terminal_normal
 	local response
 	while :; do
 		read -r -p 'Save the current file? [Y/n] ' response
 		case "${response}" in
 			[yY]|[yY][eE][sS]|'')
-				file_save
+				bashed_file_save
 				return
 				;;
 			[nN]|[nN][oO])
@@ -1339,26 +1339,26 @@ file_ask_save_if_necessary() {
 				;;
 		esac
 	done
-	terminal_editing
+	bashed_terminal_editing
 }
 
-# file_ask_filename <reason>
+# bashed_file_ask_filename <reason>
 # Prompt the user to select a file.
-file_ask_filename() {
-	terminal_normal
+bashed_file_ask_filename() {
+	bashed_terminal_normal
 	while :; do
 		read -er -p "Enter filename to ${1}: " file_path
 		[ "${file_path}" ] && break
 		echo 'No filename entered.'
 	done
 	draw_all_flag=1
-	terminal_editing
+	bashed_terminal_editing
 }
 
 ######## Help Screen ########
 
-help_show() {
-	terminal_normal
+bashed_help_show() {
+	bashed_terminal_normal
 	clear
 
 	cat <<EOF
@@ -1384,31 +1384,31 @@ EOF
 	local char
 	$read_char char
 
-	terminal_editing
+	bashed_terminal_editing
 	draw_all_flag=1
 }
 
 ######## Main ########
 
-main() {
-	event_init
+bashed_main() {
+	bashed_event_init
 
-	terminal_editing
-	clipboard_init
-	preferences_init
+	bashed_terminal_editing
+	bashed_clipboard_init
+	bashed_preferences_init
 
-	file_init "${1}"
+	bashed_file_init "${1}"
 
 	while :; do
 		# Skip invalid input.
-		input_get || continue
+		bashed_input_get || continue
 
 		# Process input.
-		event_input
+		bashed_event_input
 
 		# Redraw the display.
-		draw
+		bashed_draw
 	done
 }
 
-main "${@}"
+bashed_main "${@}"
