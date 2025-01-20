@@ -1207,7 +1207,8 @@ bashed_event_input() {
 			;;
 		D)
 			bashed_file_ask_save_if_necessary
-			exit 0
+			#exit 0
+			bashed_exit=1
 			;;
 		N)
 			bashed_file_new
@@ -1399,7 +1400,9 @@ bashed_main() {
 
 	bashed_file_init "${1}"
 
-	while :; do
+	bashed_exit=0
+	local bashed_loop=1
+	while [ $bashed_loop -eq 1 ]; do
 		# Skip invalid input.
 		bashed_input_get || continue
 
@@ -1408,7 +1411,17 @@ bashed_main() {
 
 		# Redraw the display.
 		bashed_draw
+		
+		if [ "$bashed_exit" == 1 ]; then
+			bashed_loop=0
+		fi
 	done
+	return 0
 }
 
-bashed_main "${@}"
+if (return 0 2>/dev/null); then
+  :
+else
+  bashed_main "${@}"
+  exit $?
+fi
