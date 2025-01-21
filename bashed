@@ -1042,6 +1042,8 @@ $(( tab_expand_col_v + 1 ))"
 	else
 		if [ "${file_path}" ]; then
 			left_text="\"${file_path}\""
+		elif [ "${var_name}" ]; then
+			left_text="[ \$${var_name} ]"
 		else
 			left_text='[new buffer]'
 		fi
