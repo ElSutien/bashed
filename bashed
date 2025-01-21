@@ -1039,6 +1039,13 @@ $(( tab_expand_col_v + 1 ))"
 	if [ "${draw_message_pending}" ]; then
 		left_text="${draw_message_pending}"
 		draw_message_pending=''
+	elif [ "${customMsg}" ]; then
+		left_text="${customMsg}"
+		
+		# Show whether the file has been modified.
+		if (( file_modified )); then
+			left_text+=' [modified]'
+		fi
 	else
 		if [ "${file_path}" ]; then
 			left_text="\"${file_path}\""
@@ -1306,7 +1313,7 @@ bashed_file_init() {
 
 	if [ -e "${file_path}" ]; then
 		readarray -t lines <<< "$(<"${file_path}")"
-		bashed_draw_message "Opened file \"${file_path}\"".
+		#bashed_draw_message "Opened file \"${file_path}\"".
 	else
 		lines=('')
 	fi
@@ -1387,7 +1394,7 @@ bashed_var_init() {
 
 	if [ -n "${var_name}" ]; then
 		readarray -t lines <<< "${!var_name}"
-		bashed_draw_message "Opened variable \"${var_name}\". Use Ctrl+D to exit."
+		#bashed_draw_message "Opened variable \"${var_name}\". Use Ctrl+D to exit."
 	else
 		lines=('')
 	fi
@@ -1452,6 +1459,7 @@ bashed_print_help() {
   echo "Options:"
   echo "    -h  --help      Show this help."
   echo "    -v  --var       Use a bash variable instead of a file as target."
+  echo "    -m  --msg str   Set a custom message in status bar instead of filename."
   echo ""
   echo "By Justin Yao Du and ElSutien"
   echo
@@ -1474,6 +1482,11 @@ bashed_main() {
 			isVarMode=1
 			;;
 		
+		-m|--msg)
+			customMsg="${2}"
+			shift
+			;;
+			
 		-*)
 			echo "ERROR: option not supported. Use --help for more info." 1>&2
 			exit 1
