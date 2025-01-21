@@ -1229,7 +1229,7 @@ bashed_event_input() {
 			;;
 		D)
 			if [ $isVarMode -eq 1 ]; then
-				bashed_var_save
+				bashed_var_ask_save_if_necessary
 			else
 				bashed_file_ask_save_if_necessary
 			fi
@@ -1415,6 +1415,30 @@ bashed_var_save() {
 	bashed_draw_message "Saved variable \"${var_name}\"."
 
 	file_modified=0
+}
+
+# If the variable has been modified, ask if the user wants to save it.
+bashed_var_ask_save_if_necessary() {
+	(( file_modified )) || return
+
+	bashed_terminal_normal
+	local response
+	while :; do
+		read -r -p 'Save the current variable? [Y/n] ' response
+		case "${response}" in
+			[yY]|[yY][eE][sS]|'')
+				bashed_var_save
+				return
+				;;
+			[nN]|[nN][oO])
+				return
+				;;
+			*)
+				echo 'Invalid input.'
+				;;
+		esac
+	done
+	bashed_terminal_editing
 }
 
 ######## Help Screen ########
