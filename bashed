@@ -1400,9 +1400,42 @@ EOF
 	draw_all_flag=1
 }
 
+# Print execution help
+bashed_print_help() {
+  echo "Bashed: a command-line text editor written in Bash."
+  echo ""
+  echo "Usage: ${0##*/} [options] [target]"
+  echo ""
+  echo "Options:"
+  echo "    -h  --help      Show this help."
+  echo ""
+  echo ""
+  echo "By Justin Yao Du and ElSutien"
+  echo
+}
 ######## Main ########
 
 bashed_main() {
+
+	while [ $# -gt 0 ]; do
+		case "${1}" in
+		--help|-h)
+			bashed_print_help
+			exit 0
+			;;
+		
+		-*)
+			echo "ERROR: option not supported. Use --help for more info." 1>&2
+			exit 1
+			;;
+		*)
+			local targetname="${1}"
+			;;
+		esac
+		shift
+	done
+
+
 	bashed_terminal_secondary
 	bashed_event_init
 
@@ -1410,11 +1443,10 @@ bashed_main() {
 	bashed_clipboard_init
 	bashed_preferences_init
 
-	bashed_file_init "${1}"
+	bashed_file_init "${targetname}"
 
 	bashed_exit=0
-	local bashed_loop=1
-	while [ $bashed_loop -eq 1 ]; do
+	while [ $bashed_exit -eq 0 ]; do
 		# Skip invalid input.
 		bashed_input_get || continue
 
@@ -1423,10 +1455,6 @@ bashed_main() {
 
 		# Redraw the display.
 		bashed_draw
-		
-		if [ "$bashed_exit" == 1 ]; then
-			bashed_loop=0
-		fi
 	done
 	
 	bashed_terminal_normal
