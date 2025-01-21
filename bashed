@@ -61,7 +61,7 @@ bashed_input_get() {
 			if [ "${term}" == 'xterm' ]; then
 				# Ctrl+Backspace in XTerm.
 				input_key='Backspace'
-				input_ctrl=1
+				#input_ctrl=1  #Fix for alacritty (this is normal backspace).
 				return 0
 			else
 				# Backspace in the Linux console.
@@ -1476,17 +1476,17 @@ EOF
 
 # Print execution help
 bashed_print_help() {
-  echo "Bashed: a command-line text editor written in Bash."
-  echo ""
-  echo "Usage: ${0##*/} [options] [target]"
-  echo ""
-  echo "Options:"
-  echo "    -h  --help      Show this help."
-  echo "    -v  --var       Use a bash variable instead of a file as target."
-  echo "    -m  --msg str   Set a custom message in status bar instead of filename."
-  echo ""
-  echo "By Justin Yao Du and ElSutien"
-  echo
+	echo "Bashed: a command-line text editor written in Bash."
+	echo ""
+	echo "Usage: ${0##*/} [options] [target]"
+	echo ""
+	echo "Options:"
+	echo "    -h  --help      Show this help."
+	echo "    -v  --var       Use a bash variable instead of a file as target."
+	echo "    -m  --msg str   Set a custom message in status bar instead of filename."
+	echo ""
+	echo "By Justin Yao Du and ElSutien"
+	echo
 }
 
 
