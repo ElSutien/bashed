@@ -44,7 +44,7 @@ bashed_input_get() {
 	input_shift=0
 
 	local char
-	$read_char char || exit 0 # Exit if there is no more input.
+	POSIXLY_CORRECT=1 $read_char char || bashed_exit=1 # Exit if there is no more input.
 
 	# Special cases for certain control characters.
 	case "${char}" in
@@ -241,15 +241,17 @@ bashed_input_test() {
 
 ######## Terminal Settings ########
 
-# Set the terminal in the secondary screen mode.
+# Set the terminal in the secondary screen mode and register exit trap.
 bashed_terminal_secondary() {
-  tput smcup
-  tput cup 0 0
+	tput smcup
+	tput cup 0 0
+	trap 'bashed_exit=1' SIGINT SIGTERM SIGKILL
 }
 
-# Set the terminal to the primary screen mode.
+# Set the terminal to the primary screen mode and deregister the exit trap.
 bashed_terminal_primary() {
-  tput rmcup
+	tput rmcup
+	trap - SIGINT SIGTERM SIGKILL
 }
 
 # Set terminal settings when using the editor.
