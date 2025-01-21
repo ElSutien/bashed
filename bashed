@@ -1217,7 +1217,11 @@ bashed_event_input() {
 			bashed_cursor_end
 			;;
 		D)
-			bashed_file_ask_save_if_necessary
+			if [ $isVarMode -eq 1 ]; then
+				bashed_var_save
+			else
+				bashed_file_ask_save_if_necessary
+			fi
 			#exit 0
 			bashed_exit=1
 			;;
@@ -1228,7 +1232,11 @@ bashed_event_input() {
 			bashed_file_open
 			;;
 		P)
-			bashed_file_save
+			if [ $isVarMode -eq 1 ]; then
+				bashed_var_save
+			else
+				bashed_file_save
+			fi
 			;;
 		V)
 			bashed_clipboard_paste
@@ -1367,6 +1375,37 @@ bashed_file_ask_filename() {
 	bashed_terminal_editing
 }
 
+######## Vars Operations ########
+# bashed_var_init [name]
+# Open the specified variable (if provided), or create an empty buffer.
+bashed_var_init() {
+	var_name="${1}"
+
+	if [ -n "${var_name}" ]; then
+		readarray -t lines <<< "${!var_name}"
+		bashed_draw_message "Opened variable \"${var_name}\". Use Ctrl+D to exit."
+	else
+		lines=('')
+	fi
+
+	file_modified=0
+
+	bashed_cursor_selection_init
+	bashed_viewport_init
+	bashed_draw_init
+}
+
+# Save the current buffer.
+bashed_var_save() {
+	IFSO=$IFS; IFS=$'\n'
+	eval ${var_name}='$(printf "%s\n" "${lines[*]}")'
+	IFS=$IFSO
+
+	bashed_draw_message "Saved variable \"${var_name}\"."
+
+	file_modified=0
+}
+
 ######## Help Screen ########
 
 bashed_help_show() {
@@ -1408,20 +1447,27 @@ bashed_print_help() {
   echo ""
   echo "Options:"
   echo "    -h  --help      Show this help."
-  echo ""
+  echo "    -v  --var       Use a bash variable instead of a file as target."
   echo ""
   echo "By Justin Yao Du and ElSutien"
   echo
 }
+
+
 ######## Main ########
 
 bashed_main() {
-
+	isVarMode=0
+	
 	while [ $# -gt 0 ]; do
 		case "${1}" in
 		--help|-h)
 			bashed_print_help
 			exit 0
+			;;
+		
+		-v|--var)
+			isVarMode=1
 			;;
 		
 		-*)
@@ -1443,7 +1489,11 @@ bashed_main() {
 	bashed_clipboard_init
 	bashed_preferences_init
 
-	bashed_file_init "${targetname}"
+	if [ "$isVarMode" == 1 ]; then
+	  bashed_var_init "${targetname}"
+	else
+	  bashed_file_init "${targetname}"
+	fi
 
 	bashed_exit=0
 	while [ $bashed_exit -eq 0 ]; do
