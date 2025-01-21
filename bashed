@@ -241,6 +241,17 @@ bashed_input_test() {
 
 ######## Terminal Settings ########
 
+# Set the terminal in the secondary screen mode.
+bashed_terminal_secondary() {
+  tput smcup
+  tput cup 0 0
+}
+
+# Set the terminal to the primary screen mode.
+bashed_terminal_primary() {
+  tput rmcup
+}
+
 # Set terminal settings when using the editor.
 bashed_terminal_editing() {
 	# Do not print the user's keystrokes.
@@ -1392,6 +1403,7 @@ EOF
 ######## Main ########
 
 bashed_main() {
+	bashed_terminal_secondary
 	bashed_event_init
 
 	bashed_terminal_editing
@@ -1416,6 +1428,9 @@ bashed_main() {
 			bashed_loop=0
 		fi
 	done
+	
+	bashed_terminal_normal
+	bashed_terminal_primary
 	return 0
 }
 
