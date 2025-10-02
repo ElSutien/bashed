@@ -257,7 +257,7 @@ bashed_terminal_is_secondary() {
 
 # Set the terminal in the secondary screen mode and register exit trap.
 bashed_terminal_secondary() {
-  if [ bashed_terminal_is_secondary ]; then
+  if bashed_terminal_is_secondary; then
     keep_secondary=1
     clear
   else
