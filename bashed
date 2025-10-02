@@ -241,16 +241,39 @@ bashed_input_test() {
 
 ######## Terminal Settings ########
 
+# Check if terminal is already in secondary screen mode
+bashed_terminal_is_secondary() {
+  local oldtty
+  local response
+  local check
+  oldtty=`stty -g`
+  stty raw -echo min 0  time 5
+  printf '\033[?1049$p'
+  read response
+  stty $oldtty
+  check=$(echo "$response" | tr '\033' '@')
+  [ "$check" == '@[?1049;1$y' ] && return 0 || return 1
+}
+
 # Set the terminal in the secondary screen mode and register exit trap.
 bashed_terminal_secondary() {
-	tput smcup
-	tput cup 0 0
+  if [ bashed_terminal_is_secondary ]; then
+    keep_secondary=1
+    clear
+  else
+	  tput smcup
+	  tput cup 0 0
+  fi
 	trap 'bashed_exit=1' SIGINT SIGTERM SIGKILL
 }
 
 # Set the terminal to the primary screen mode and deregister the exit trap.
 bashed_terminal_primary() {
-	tput rmcup
+  if [ "$keep_secondary" == "1" ]; then
+    clear
+  else
+	  tput rmcup
+  fi
 	trap - SIGINT SIGTERM SIGKILL
 }
 
@@ -1298,7 +1321,7 @@ bashed_event_winch() {
 
 # Register signal handlers.
 bashed_event_init() {
-	trap bashed_event_exit EXIT
+	#trap bashed_event_exit EXIT
 	trap bashed_event_tstp TSTP
 	trap bashed_event_cont CONT
 	trap bashed_event_winch WINCH
